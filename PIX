@@ -1,0 +1,76 @@
+import qrcode
+from flask import Flask, request, send_file
+
+# -------- FUNÇÃO CRC16 PADRÃO PIX -------- #
+def crc16(data: str):
+    poly = 0x1021
+    crc = 0xFFFF
+    for b in data.encode('ascii'):
+        crc ^= b << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = (crc << 1) ^ poly
+            else:
+                crc <<= 1
+            crc &= 0xFFFF
+    return format(crc, '04X')
+
+
+# -------- FUNÇÃO: GERA PAYLOAD PIX -------- #
+def gerar_payload_pix(chave, nome, cidade, valor=None):
+    nome = nome[:25]
+    cidade = cidade[:15]
+
+    gui = "br.gov.bcb.pix"
+    mai = f"00{len(gui):02d}{gui}01{len(chave):02d}{chave}"
+    mai_full = f"26{len(mai):02d}{mai}"
+
+    payload = (
+        "000201"
+        "010211"
+        f"{mai_full}"
+        "52040000"
+        "5303986"
+        f"59{len(nome):02d}{nome}"
+        f"60{len(cidade):02d}{cidade}"
+    )
+
+    if valor:
+        valor = f"{float(valor):.2f}"
+        payload += f"54{len(valor):02d}{valor}"
+
+    payload += "6304"
+    payload = payload + crc16(payload)
+
+    return payload
+
+
+# -------- FUNÇÃO: GERA QR CODE -------- #
+def gerar_qr(payload, filename="qr_pix.png"):
+    img = qrcode.make(payload)
+    img.save(filename)
+    return filename
+
+
+# -------- SERVIDOR FLASK -------- #
+app = Flask(__name__)
+
+@app.route("/pix")
+def gerar_pix():
+    chave = request.args.get("chave")
+    nome = request.args.get("nome")
+    cidade = request.args.get("cidade")
+    valor = request.args.get("valor")
+
+    if not (chave and nome and cidade):
+        return "Use assim: /pix?chave=EMAIL&nome=NOME&cidade=CIDADE&valor=10.00"
+
+    payload = gerar_payload_pix(chave, nome, cidade, valor)
+    filename = gerar_qr(payload)
+
+    return send_file(filename, mimetype="image/png")
+
+
+if __name__ == "__main__":
+    print("Servidor rodando em http://127.0.0.1:5000/pix")
+    app.run(debug=True)
