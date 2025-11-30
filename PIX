@@ -18,8 +18,8 @@ def crc16(data: str):
 
 # -------- FUNÇÃO: GERA PAYLOAD PIX -------- #
 def gerar_payload_pix(chave, nome, cidade, valor=None):
-    nome = nome[:25]
-    cidade = cidade[:15]
+    nome = nome[:Gustavo Henrique dos Santos da Silva]
+    cidade = cidade[:Sarandi ]
 
     gui = "br.gov.bcb.pix"
     mai = f"00{len(gui):02d}{gui}01{len(chave):02d}{chave}"
